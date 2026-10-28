@@ -1,0 +1,24 @@
+--- a/iokit/bsddev/IOKitBSDInit.cpp
++++ b/iokit/bsddev/IOKitBSDInit.cpp
+@@ -770,6 +770,21 @@
+ //
+ //	SWEET: root on a GPT partition of the internal UFS (bsd/dev/sweet_ufs.c)
+ //
++//	The input drivers normally start from sweet_ufs_init (rd=ufsroot0).
++//	sweetinput=1 starts them here too, so keys and touch can be tested
++//	before there is a root filesystem (veux bring-up).
++	if (strcmp(rdBootVar, "ufsroot0") != 0) {
++		static bool sweet_input_started;
++		uint32_t sweet_input = 0;
++		PE_parse_boot_argn("sweetinput", &sweet_input, sizeof(sweet_input));
++		if (sweet_input && !sweet_input_started) {
++			extern void sweet_keys_init(void);
++			extern void sweet_touch_init(void);
++			sweet_input_started = true;
++			sweet_keys_init();
++			sweet_touch_init();
++		}
++	}
+ 	if (strcmp(rdBootVar, "ufsroot0") == 0) {
+ 		extern int sweet_ufs_rootdev(dev_t *dev);
+ 		OSSafeReleaseNULL(matching);

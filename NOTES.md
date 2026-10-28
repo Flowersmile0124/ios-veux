@@ -57,8 +57,11 @@ Status:
 - 2026-10-28 STAGE 2 OK on the phone (shim-boot-veux-k3.img): kernel boots on 1 CPU
   (mpidr 0x0, SGI1 OK), AppleCLCD 1080x2400 at 0x85200000, AMFI/Sandbox/HFS stand-ins
   register, skywalk self-tests pass, stops at "Waiting on <dict> IOMedia Apple_HFS"
-  (no root, as intended). Next: stage 3 image shim-boot-veux-k3t.img = same kernel
-  with sweetkeys=1 sweettouch=1 (touch starts after the 0060 delay).
+  (no root, as intended).
+- Stage 3 try 1 (k3t, sweetkeys=1 sweettouch=1): no SWEET KEYS/TOUCH lines at all.
+  sweet_keys_init/sweet_touch_init only run from sweet_ufs_init (rd=ufsroot0).
+  0083 adds boot-arg sweetinput=1: IOFindBSDRoot starts them once when rd is not
+  ufsroot0, before the root wait.
 - CI: macos-14 (Xcode 15) has no capacity and retires 2026-11-02; two runs
   failed with "job was not acquired by Runner". The workflow now defaults to
   macos-15 (input `runner`), oldest Xcode there is 16.0. Xcode 16's iig uses
