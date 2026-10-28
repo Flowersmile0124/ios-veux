@@ -46,6 +46,14 @@ Status:
   upper-bank size 0xf9200000 (rooted /proc/iomem). Kept ours where the DT
   disagrees with theirs: TLMM GPIO n at 0x500000 + n * 0x1000 (DT reg
   0x400000 plus REG_BASE 0x100000), vol-up PMR735A gpio1 = 0x8800 (PPID 0x488).
+- 2026-10-28 first kernel built: run 40671852368 (Flowersmile0124 fork, macos-15,
+  Xcode 16.0 + 0082), all 0001-0082 applied, only blacktop's macOS patches skipped.
+  Stage 2 image `shim/out/shim-boot-veux-k3.img` (sha256 e0b64631...), ADT
+  `--highmem --veux` (no /product node: research/ipsw-x/d22ap.adt not on this host),
+  boot-args `debug=0xc serial=3 cpus=1 keepsyms=1 -enable_kprintf_spam -noprogress
+  sweetusb=0 sweetkeys=0 sweettouch=0 sweetbattery=0 sweetlog=0 wdt=-1`. No root:
+  expected end state is the kernel log on screen waiting for the root device.
+  Artifacts of public fork runs download without login via nightly.link.
 - CI: macos-14 (Xcode 15) has no capacity and retires 2026-11-02; two runs
   failed with "job was not acquired by Runner". The workflow now defaults to
   macos-15 (input `runner`), oldest Xcode there is 16.0. Xcode 16's iig uses
