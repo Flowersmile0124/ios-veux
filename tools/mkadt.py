@@ -47,6 +47,9 @@ if '--veux' in sys.argv:
     GICR, GICR_SIZE = 0x0f240000, 0x100000
     FB, FB_SIZE = 0x85200000, 0xc00000   # reserved-memory cont_splash_region
     UFS, UFS_SIZE = 0x04804000, 0x3000   # ufshc@4804000 "ufs_mem"
+    # Usable part of the upper bank per a rooted veux's /proc/iomem
+    # (pusssnpur/ios-veux); the top is reserved there.
+    HIGH_MEM_SIZE = 0xf9200000
 
 BOOT_MANIFEST_HASH = hashlib.sha384(b'sweet boot manifest').digest()
 

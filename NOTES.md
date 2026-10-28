@@ -18,7 +18,8 @@ Hardware (veux live FDT, Mu-Silicium veux.dts, and the stage 1 screen):
 - CPUs: MPIDR 0x000-0x500 A55, 0x600/0x700 A78 (same layout as sweet).
 - Touch: Goodix GT9896 @0x5d on GENI I2C 0x04c88000; power by TLMM GPIOs
   (avdd 51, dvdd 44), reset 21, irq 22. Not RPMh as on sweet.
-- Keys: SPMI arb core 0x01c40000, obsrvr 0x01e00000, cnfg 0x01c0a000.
+- Keys: SPMI arb core 0x01c40000, obsrvr 0x03e00000, cnfg 0x01c0a000
+  (reg order core, chnls 0x01e00000, obsrvr, intr, cnfg).
   PM6125 PON (SID 0, 0x800) power/vol-down; vol-up PMR735A GPIO1 (SID 4, 0x8800).
 - USB: USB30_PRIM 0x04e00000 (sweet values in 0072-0077 are wrong for veux).
 - ABL refuses `fastboot boot` ("unknown command"). Test images go to the
@@ -32,7 +33,7 @@ Status:
   sweetbattery=0 sweetlog=0 cpus=1` and no `ufsrw`/`rd=`: those drivers still carry
   sweet addresses, and sweetlog writes the end of userdata (Android data still there).
 - Stage 3 (written 2026-10-28, untested, kernel not built yet): 0060/0062/0063
-  carry the veux values. Keys: SPMI 0x01c40000/0x01e00000/0x01c0a000, vol-up
+  carry the veux values. Keys: SPMI 0x01c40000/0x03e00000/0x01c0a000, vol-up
   PPID 0x488 RT 0x8810. Touch: SE 0x04c88000, GCC 0x01400000 (vote 0x7900c
   bits 17-20 + 23, RCG 0x5327c, from gcc-sm6375.c), TLMM 0x00500000, pins
   SDA/SCL 19/20 (mux 1), IRQ 22, reset 21, DVDD GPIO 44 replaces the RPMh L11C
@@ -40,6 +41,11 @@ Status:
   8640x19200 (goodix,panel-max-x/y). If taps land at 1/8 scale or are all
   rejected, that assumption is wrong. Patch chain for sweet_touch.c and
   sweet_keys.c replays cleanly (0060 -> 0062 -> 0063).
+- Cross-checked with pusssnpur/ios-veux (independent port): same FB, GIC,
+  UFS, touch bus/clocks/pins. Took their SPMI observer (ours had chnls) and
+  upper-bank size 0xf9200000 (rooted /proc/iomem). Kept ours where the DT
+  disagrees with theirs: TLMM GPIO n at 0x500000 + n * 0x1000 (DT reg
+  0x400000 plus REG_BASE 0x100000), vol-up PMR735A gpio1 = 0x8800 (PPID 0x488).
 - Blocked: GitHub Actions disabled on the Snowman2409 account (billing lock,
   support ticket #4917744). Build runs from a fork whose owner has Actions.
 
