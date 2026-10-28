@@ -46,6 +46,13 @@ Status:
   upper-bank size 0xf9200000 (rooted /proc/iomem). Kept ours where the DT
   disagrees with theirs: TLMM GPIO n at 0x500000 + n * 0x1000 (DT reg
   0x400000 plus REG_BASE 0x100000), vol-up PMR735A gpio1 = 0x8800 (PPID 0x488).
+- CI: macos-14 (Xcode 15) has no capacity and retires 2026-11-02; two runs
+  failed with "job was not acquired by Runner". The workflow now defaults to
+  macos-15 (input `runner`), oldest Xcode there is 16.0. Xcode 16's iig uses
+  IORPC.kernelContent, which xnu-8796 lacks: patch 0082 adds the field
+  (KERNEL only) and sets it where IOUserServer builds an IORPC (server() and
+  the trap path), as later xnu does. Untested until the first macos-15 run;
+  more Xcode 16 fallout may show up in that log.
 - Blocked: GitHub Actions disabled on the Snowman2409 account (billing lock,
   support ticket #4917744). Build runs from a fork whose owner has Actions.
 
