@@ -76,7 +76,23 @@ jobs:
         env:
           # keep going after errors so one run reports every compile failure
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
-        run: bash build.sh
+        shell: bash
+        run: bash build.sh 2>&1 | tee ../build.log
+
+      - name: Report compile errors
+        if: failure()
+        shell: bash
+        run: |
+          # Job logs need a login; the run page's annotations and summary are public.
+          grep -E 'Applying patch|Skipping patch|patch failed|does not apply' build.log | sed 's|.*/patches/||' > patch-report.txt || true
+          grep -nE '(error|fatal error):|Error [0-9]+|undefined symbol|ld: ' build.log | head -60 > errors.txt || true
+          {
+            echo '## Patches'; echo '```'; cat patch-report.txt; echo '```'
+            echo '## First errors'; echo '```'; cat errors.txt; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          head -10 errors.txt | while IFS= read -r l; do
+            l=${l//'%'/'%25'}; echo "::error::${l:0:900}"
+          done
 
       - name: Package build tree for local compiles
         if: always()
@@ -117,6 +133,7 @@ jobs:
         run: |
           mkdir -p out
           cp -R dxb/fakeroot/System/Library/Kernels/. out/ 2>/dev/null || true
+          cp build.log out/ 2>/dev/null || true
           ls -la out
           (cd out && shasum -a 256 kernel.* > SHA256SUMS) || true
 
