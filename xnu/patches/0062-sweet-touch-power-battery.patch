@@ -54,31 +54,31 @@
  	}
 -	printf("SWEET TOUCH: TLMM reset=%#x irq=%#x vdd90=%#x; L11C must be powered by firmware\n",
 +	printf("SWEET TOUCH: TLMM reset=%#x irq=%#x vdd90=%#x; voting L11C through RPMh\n",
- 	    touch_rd(st.gpio, TOUCH_GPIO_IO(8)), touch_rd(st.gpio, TOUCH_GPIO_IO(9)),
- 	    touch_rd(st.gpio, TOUCH_GPIO_IO(90)));
--	touch_gpio(6, 1, 0, 0, false); /* qup11 SDA/SCL, 2 mA, no internal pull */
--	touch_gpio(7, 1, 0, 0, false);
--	touch_gpio(9, 0, 3, 3, false); /* interrupt input, 8 mA, pull-up */
--	touch_gpio(90, 0, 0, 0, true); /* board digital power enable, high */
+ 	    touch_rd(st.gpio, TOUCH_GPIO_IO(21)), touch_rd(st.gpio, TOUCH_GPIO_IO(22)),
+ 	    touch_rd(st.gpio, TOUCH_GPIO_IO(51)));
+-	touch_gpio(19, 1, 0, 0, false); /* qup12 SDA/SCL, 2 mA, no internal pull */
+-	touch_gpio(20, 1, 0, 0, false);
+-	touch_gpio(22, 0, 3, 3, false); /* interrupt input, 8 mA, pull-up */
+-	touch_gpio(51, 0, 0, 0, true); /* AVDD enable (goodix,avdd-gpio), high */
 -	touch_wait(10);
--	touch_gpio(8, 0, 3, 3, true);  /* release reset; no reset-low pulse */
+-	touch_gpio(21, 0, 3, 3, true);  /* release reset; no reset-low pulse */
 -	touch_wait(300);
 +	/* Keep the IC in reset while its rails settle; IRQ stays an input. */
-+	touch_gpio(9, 0, 3, 3, false, false); /* IRQ input, 8 mA, pull-up */
-+	touch_gpio(8, 0, 3, 3, true, false);
-+	int power_error = sweet_rpmh_vreg_enable("ldoc11", 3200);
++	touch_gpio(22, 0, 3, 3, false, false); /* IRQ input, 8 mA, pull-up */
++	touch_gpio(21, 0, 3, 3, true, false);
++	int power_error = (touch_gpio(44, 0, 0, 0, true, true), 0); /* veux: DVDD enable GPIO, no RPMh */
 +	if (power_error) {
 +		printf("SWEET TOUCH: L11C RPMh enable failed %d; probes skipped\n", power_error);
 +		goto out;
 +	}
-+	touch_gpio(90, 0, 0, 0, true, true); /* board digital power enable */
++	touch_gpio(51, 0, 0, 0, true, true); /* AVDD enable (goodix,avdd-gpio) */
 +	touch_wait(10); /* conservative rail settling; not a DT timing value */
-+	touch_gpio(6, 1, 0, 0, false, false); /* qup11 SDA/SCL, 2 mA */
-+	touch_gpio(7, 1, 0, 0, false, false);
++	touch_gpio(19, 1, 0, 0, false, false); /* qup12 SDA/SCL, 2 mA */
++	touch_gpio(20, 1, 0, 0, false, false);
 +	/* Vendor GT9896 dev_confirm: reset low 2 ms, then high. */
-+	touch_gpio(8, 0, 3, 3, true, false);
++	touch_gpio(21, 0, 3, 3, true, false);
 +	touch_wait(2);
-+	touch_gpio(8, 0, 3, 3, true, true);
++	touch_gpio(21, 0, 3, 3, true, true);
 +	touch_wait(300); /* exceeds vendor 5 ms test + 95 ms post-test wait */
  	uint8_t gid[12] = {0}, fid1 = 0, fid2 = 0;
  	int ge = touch_read(0x5d, 0x4022, true, gid, sizeof(gid));
@@ -487,9 +487,9 @@
 +
 +extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
 +
-+#define SP_CORE_PA 0x0c440000u
-+#define SP_OBS_PA  0x0e600000u
-+#define SP_CFG_PA  0x0c40a000u
++#define SP_CORE_PA 0x01c40000u
++#define SP_OBS_PA  0x01e00000u
++#define SP_CFG_PA  0x01c0a000u
 +#define SP_NO_APID 0xffffu
 +
 +static vm_offset_t sp_core, sp_obs, sp_cfg;

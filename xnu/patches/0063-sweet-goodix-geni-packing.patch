@@ -290,7 +290,7 @@
  		printf("SWEET TOUCH: inherited FIFO data; probes skipped\n");
 @@ -511,14 +589,17 @@
  	touch_wait(2);
- 	touch_gpio(8, 0, 3, 3, true, true);
+ 	touch_gpio(21, 0, 3, 3, true, true);
  	touch_wait(300); /* exceeds vendor 5 ms test + 95 ms post-test wait */
 -	uint8_t gid[12] = {0}, fid1 = 0, fid2 = 0;
 -	int ge = touch_read(0x5d, 0x4022, true, gid, sizeof(gid));

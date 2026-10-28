@@ -35,7 +35,7 @@
 @@ -0,0 +1,182 @@
 +/*
 + * Minimal polled SWEET keys. Call once after the scheduler is running.
-+ * See hw-report.md: volume-up is PM6150L SID 4, NOT PM6150 SID 0.
++ * veux: volume-up is PMR735A GPIO1 (SID 4, 0x8800), power/vol-down PM6125 PON.
 + * PMIC access is READ ONLY: the sole MMIO write issues EXT_READL on an
 + * observer channel. No PMIC config, IRQ acknowledge or reset writes exist.
 + */
@@ -52,11 +52,11 @@
 +extern void sweet_hid_key(int key, int down);
 +void sweet_keys_init(void);
 +
-+#define KEYS_CORE_PA     0x0c440000u
-+#define KEYS_OBS_PA      0x0e600000u
-+#define KEYS_CNFG_PA     0x0c40a000u
++#define KEYS_CORE_PA     0x01c40000u
++#define KEYS_OBS_PA      0x01e00000u
++#define KEYS_CNFG_PA     0x01c0a000u
 +#define KEYS_PON_RT      0x0810u
-+#define KEYS_GPIO_RT     0xc110u
++#define KEYS_GPIO_RT     0x8810u
 +#define KEYS_NO_APID     0xffffu
 +
 +static vm_offset_t keys_core, keys_obs, keys_cnfg;
@@ -187,13 +187,13 @@
 +		return;
 +	}
 +	keys_pon_apid = keys_find_apid(0x008, count);
-+	keys_gpio_apid = keys_find_apid(0x4c1, count);
++	keys_gpio_apid = keys_find_apid(0x488, count);
 +	uint8_t pon = 0, gpio = 0, mode = 0, en = 0, subtype = 0;
 +	bool pok = keys_read(keys_pon_apid, KEYS_PON_RT, &pon);
 +	bool gok = keys_read(keys_gpio_apid, KEYS_GPIO_RT, &gpio);
-+	bool mok = keys_read(keys_gpio_apid, 0xc140, &mode);
-+	bool eok = keys_read(keys_gpio_apid, 0xc146, &en);
-+	bool sok = keys_read(keys_gpio_apid, 0xc105, &subtype);
++	bool mok = keys_read(keys_gpio_apid, 0x8840, &mode);
++	bool eok = keys_read(keys_gpio_apid, 0x8846, &en);
++	bool sok = keys_read(keys_gpio_apid, 0x8805, &subtype);
 +	printf("SWEET KEYS: arb=%#x apids=%u pon-apid=%u gpio4-apid=%u pon=%#x/%d gpio=%#x/%d mode=%#x/%d en=%#x/%d subtype=%#x/%d\n",
 +	    keys_version, count, keys_pon_apid, keys_gpio_apid,
 +	    pon, pok, gpio, gok, mode, mok, en, eok, subtype, sok);
@@ -241,11 +241,11 @@
 +extern void sweet_hid_touch(int finger, int down, int x, int y);
 +void sweet_touch_init(void);
 +
-+#define TOUCH_SE_PA      0x00a84000u
-+#define TOUCH_GCC_PA     0x00100000u
-+#define TOUCH_NORTH_PA   0x03900000u /* DT TLMM + NORTH (0x500000) */
-+#define TOUCH_GCC_VOTE   0x5200cu
-+#define TOUCH_RCG       0x18148u    /* wrapper1 LOCAL S1 = global SE7 */
++#define TOUCH_SE_PA      0x04c88000u
++#define TOUCH_GCC_PA     0x01400000u
++#define TOUCH_NORTH_PA   0x00500000u /* veux TLMM (pinctrl@500000) */
++#define TOUCH_GCC_VOTE   0x7900cu
++#define TOUCH_RCG       0x5327cu    /* qupv3_wrap1_s2_clk_src (gcc-sm6375) */
 +#define TOUCH_GPIO_CFG(n) ((uint32_t)(n) * 0x1000u)
 +#define TOUCH_GPIO_IO(n)  (TOUCH_GPIO_CFG(n) + 4u)
 +#define TOUCH_MAX        10u
@@ -343,7 +343,7 @@
 +touch_clocks(void)
 +{
 +	/* Vote on only wrapper1 and SE7, preserving other clock users. */
-+	uint32_t mask = (0x0fu << 18) | (1u << 23);
++	uint32_t mask = (0x0fu << 17) | (1u << 23); /* wrap1 m/s ahb, core, core2x; s2 */
 +	touch_wr(st.gcc, TOUCH_GCC_VOTE, touch_rd(st.gcc, TOUCH_GCC_VOTE) | mask);
 +	uint32_t dfs = touch_rd(st.gcc, TOUCH_RCG + 0x14u);
 +	uint32_t cfg = touch_rd(st.gcc, TOUCH_RCG + 4u);
@@ -575,13 +575,13 @@
 +		unsigned px = touch_be16(p + 2), py = touch_be16(p + 4);
 +		/* Low nibble 1/3 denotes pen data in the vendor parser. */
 +		if ((p[0] & 15u) == 1u || (p[0] & 15u) == 3u || id >= TOUCH_MAX ||
-+		    (mask & (1u << id)) || px > 1079 || py > 2399) {
++		    (mask & (1u << id)) || px > 8639 || py > 19199) {
 +			(void)touch_goodix_ack();
 +			return EIO;
 +		}
 +		mask |= 1u << id;
-+		x[id] = (int)px;
-+		y[id] = (int)py;
++		x[id] = (int)(px / 8u);
++		y[id] = (int)(py / 8u);
 +	}
 +	err = touch_goodix_ack();
 +	if (!err) {
@@ -700,8 +700,8 @@
 +	printf("SWEET TOUCH: starting in %u s\n", delay_s);
 +	touch_wait(delay_s * 1000u);
 +	printf("SWEET TOUCH: mapping GCC/TLMM/SE7\n");
-+	st.gcc = ml_io_map(TOUCH_GCC_PA, 0x60000);
-+	st.gpio = ml_io_map(TOUCH_NORTH_PA, 0x5b000);
++	st.gcc = ml_io_map(TOUCH_GCC_PA, 0x80000);
++	st.gpio = ml_io_map(TOUCH_NORTH_PA, 0x40000);
 +	st.se = ml_io_map(TOUCH_SE_PA, 0x4000);
 +	if (!st.gcc || !st.gpio || !st.se) {
 +		printf("SWEET TOUCH: MMIO mapping failed\n");
@@ -711,14 +711,14 @@
 +		goto out;
 +	}
 +	printf("SWEET TOUCH: TLMM reset=%#x irq=%#x vdd90=%#x; L11C must be powered by firmware\n",
-+	    touch_rd(st.gpio, TOUCH_GPIO_IO(8)), touch_rd(st.gpio, TOUCH_GPIO_IO(9)),
-+	    touch_rd(st.gpio, TOUCH_GPIO_IO(90)));
-+	touch_gpio(6, 1, 0, 0, false); /* qup11 SDA/SCL, 2 mA, no internal pull */
-+	touch_gpio(7, 1, 0, 0, false);
-+	touch_gpio(9, 0, 3, 3, false); /* interrupt input, 8 mA, pull-up */
-+	touch_gpio(90, 0, 0, 0, true); /* board digital power enable, high */
++	    touch_rd(st.gpio, TOUCH_GPIO_IO(21)), touch_rd(st.gpio, TOUCH_GPIO_IO(22)),
++	    touch_rd(st.gpio, TOUCH_GPIO_IO(51)));
++	touch_gpio(19, 1, 0, 0, false); /* qup12 SDA/SCL, 2 mA, no internal pull */
++	touch_gpio(20, 1, 0, 0, false);
++	touch_gpio(22, 0, 3, 3, false); /* interrupt input, 8 mA, pull-up */
++	touch_gpio(51, 0, 0, 0, true); /* AVDD enable (goodix,avdd-gpio), high */
 +	touch_wait(10);
-+	touch_gpio(8, 0, 3, 3, true);  /* release reset; no reset-low pulse */
++	touch_gpio(21, 0, 3, 3, true);  /* release reset; no reset-low pulse */
 +	touch_wait(300);
 +	uint8_t gid[12] = {0}, fid1 = 0, fid2 = 0;
 +	int ge = touch_read(0x5d, 0x4022, true, gid, sizeof(gid));
@@ -741,7 +741,7 @@
 +	unsigned errors = 0, ticks = 0;
 +	while (!st.dead) {
 +		/* Optional IRQ hint still reads every 100ms, and always while down. */
-+		if (!st.irq_hint || st.active || !(touch_rd(st.gpio, TOUCH_GPIO_IO(9)) & 1u) ||
++		if (!st.irq_hint || st.active || !(touch_rd(st.gpio, TOUCH_GPIO_IO(22)) & 1u) ||
 +		    (++ticks % 10u) == 0) {
 +			int err = st.kind == TOUCH_GOODIX ? touch_goodix() : touch_focaltech();
 +			if (err) {

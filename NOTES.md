@@ -31,7 +31,17 @@ Status:
 - Stage 2 (next): first kernel boot. Use `sweetusb=0 sweetkeys=0 sweettouch=0
   sweetbattery=0 sweetlog=0 cpus=1` and no `ufsrw`/`rd=`: those drivers still carry
   sweet addresses, and sweetlog writes the end of userdata (Android data still there).
-- Stage 3: port 0060/0062 (keys, touch power) to the veux values above.
+- Stage 3 (written 2026-10-28, untested, kernel not built yet): 0060/0062/0063
+  carry the veux values. Keys: SPMI 0x01c40000/0x01e00000/0x01c0a000, vol-up
+  PPID 0x488 RT 0x8810. Touch: SE 0x04c88000, GCC 0x01400000 (vote 0x7900c
+  bits 17-20 + 23, RCG 0x5327c, from gcc-sm6375.c), TLMM 0x00500000, pins
+  SDA/SCL 19/20 (mux 1), IRQ 22, reset 21, DVDD GPIO 44 replaces the RPMh L11C
+  vote, AVDD GPIO 51. Coordinates divided by 8: the DT says the GT9896 reports
+  8640x19200 (goodix,panel-max-x/y). If taps land at 1/8 scale or are all
+  rejected, that assumption is wrong. Patch chain for sweet_touch.c and
+  sweet_keys.c replays cleanly (0060 -> 0062 -> 0063).
+- Blocked: GitHub Actions disabled on the Snowman2409 account (billing lock,
+  support ticket #4917744). Build runs from a fork whose owner has Actions.
 
 ## Agent handoff / active work (2026-10-15, latest)
 
