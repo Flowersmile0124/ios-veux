@@ -54,6 +54,11 @@ Status:
   sweetusb=0 sweetkeys=0 sweettouch=0 sweetbattery=0 sweetlog=0 wdt=-1`. No root:
   expected end state is the kernel log on screen waiting for the root device.
   Artifacts of public fork runs download without login via nightly.link.
+- 2026-10-28 STAGE 2 OK on the phone (shim-boot-veux-k3.img): kernel boots on 1 CPU
+  (mpidr 0x0, SGI1 OK), AppleCLCD 1080x2400 at 0x85200000, AMFI/Sandbox/HFS stand-ins
+  register, skywalk self-tests pass, stops at "Waiting on <dict> IOMedia Apple_HFS"
+  (no root, as intended). Next: stage 3 image shim-boot-veux-k3t.img = same kernel
+  with sweetkeys=1 sweettouch=1 (touch starts after the 0060 delay).
 - CI: macos-14 (Xcode 15) has no capacity and retires 2026-11-02; two runs
   failed with "job was not acquired by Runner". The workflow now defaults to
   macos-15 (input `runner`), oldest Xcode there is 16.0. Xcode 16's iig uses
