@@ -1,7 +1,11 @@
 #pragma once
 #include <stdint.h>
 
+#ifdef DEVICE_VEUX
+#define FB_BASE		0x85200000UL	/* veux reserved-memory cont_splash_region */
+#else
 #define FB_BASE		0x9c000000UL	/* reserved-memory cont_splash_region */
+#endif
 #define FB_W		1080
 #define FB_H		2400
 #define FB_STRIDE	(FB_W * 4)	/* a8r8g8b8, matches mainline simplefb */

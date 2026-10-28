@@ -2,7 +2,7 @@
 """Build the minimal Apple Device Tree that the SWEET xnu needs to boot.
 
 Only what the early boot path actually reads (see NOTES.md); every MMIO
-address comes from the sweet live FDT. Usage:  mkadt.py OUT.adt [--dump] [--qemu] [--highmem]
+address comes from the sweet live FDT. Usage:  mkadt.py OUT.adt [--dump] [--qemu] [--highmem] [--veux]
 """
 import hashlib, os, struct, sys
 
@@ -38,6 +38,15 @@ VTIMER_INTID = 19
 # QEMU virt (-M virt,gic-version=3 -cpu cortex-a76): GICD/GICR and the generic timer's CNTFRQ
 QEMU_GICD, QEMU_GICR, QEMU_TIMEBASE = 0x08000000, 0x080a0000, 62500000
 QEMU_VTIMER_INTID = 27
+
+# --veux: Redmi Note 11 Pro 5G / POCO X4 Pro 5G (SM6375), from its live FDT.
+# RAM is <0x80000000 0x3cc00000>, <0xc0000000 1G>, <0x1_00000000 4G> on the
+# 6 GB model; the upper 4G bank has no carve-outs, so --highmem fits as is.
+if '--veux' in sys.argv:
+    GICD, GICD_SIZE = 0x0f200000, 0x10000
+    GICR, GICR_SIZE = 0x0f240000, 0x100000
+    FB, FB_SIZE = 0x85200000, 0xc00000   # reserved-memory cont_splash_region
+    UFS, UFS_SIZE = 0x04804000, 0x3000   # ufshc@4804000 "ufs_mem"
 
 BOOT_MANIFEST_HASH = hashlib.sha384(b'sweet boot manifest').digest()
 

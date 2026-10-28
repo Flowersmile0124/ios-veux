@@ -85,10 +85,28 @@ const char *loader_boot(uintptr_t dtb)
 		return "no initrd in /chosen";
 	con_hex2("INITRD", "lo=", rd_start, "hi=", rd_end);
 
-	const struct payload *p = (const struct payload *)rd_start;
-	if (!magic_ok(p->magic))
+	/*
+	 * With a v2 boot image the payload is the whole initrd. With v3 (veux)
+	 * ABL puts the vendor_boot ramdisk first and appends ours unpadded, so
+	 * search byte by byte and move the payload down to rd_start: the MMU is
+	 * off and 64-bit accesses must be aligned.
+	 */
+	uintptr_t pl = rd_start;
+	while (pl + sizeof(struct payload) <= rd_end && !magic_ok((const char *)pl))
+		pl++;
+	if (pl + sizeof(struct payload) > rd_end)
 		return "no SWEETXNU payload";
-	if (p->version != 1 || (p->adt_off & 7) || (rd_start & 7))
+	if (pl != rd_start) {
+		con_hex2("PAYLOAD", "at=", pl, "moved to=", rd_start);
+		volatile uint8_t *d = (volatile uint8_t *)rd_start;
+		volatile const uint8_t *s = (volatile const uint8_t *)pl;
+		for (uint64_t i = 0; i < rd_end - pl; i++)
+			d[i] = s[i];
+		rd_end -= pl - rd_start;
+		pl = rd_start;
+	}
+	const struct payload *p = (const struct payload *)pl;
+	if (p->version != 1 || (p->adt_off & 7) || (pl & 7))
 		return "bad payload header";
 
 	uint64_t pa_of_va_base = p->phys_base - p->virt_base;	/* pa = va + this */
@@ -103,7 +121,7 @@ const char *loader_boot(uintptr_t dtb)
 	for (uint32_t i = 0; i < p->nsegs; i++) {
 		const struct payload_seg *s = &p->segs[i];
 		uintptr_t dst = s->vmaddr + pa_of_va_base;
-		copy64(dst, rd_start + s->file_off, s->file_size);
+		copy64(dst, pl + s->file_off, s->file_size);
 		if (s->vmsize > s->file_size)
 			zero64(dst + ((s->file_size + 7) & ~7UL), s->vmsize - ((s->file_size + 7) & ~7UL));
 	}
@@ -111,7 +129,7 @@ const char *loader_boot(uintptr_t dtb)
 
 	/* ADT, then boot_args, behind the kernel; everything below topOfKernelData is ours. */
 	uintptr_t adt_pa = p->kernel_end + pa_of_va_base;
-	copy64(adt_pa, rd_start + p->adt_off, p->adt_size);
+	copy64(adt_pa, pl + p->adt_off, p->adt_size);
 	uintptr_t ba_pa = (adt_pa + p->adt_size + PAGE_16K - 1) & ~(PAGE_16K - 1);
 	uintptr_t top = ba_pa + PAGE_16K;
 

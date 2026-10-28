@@ -1,5 +1,38 @@
 # iOS 16 on sweet (Redmi Note 10 Pro, SM7150) - working notes
 
+## veux port (Redmi Note 11 Pro 5G / POCO X4 Pro 5G, SM6375) - branch `veux`
+
+**Read first when working on veux.** Everything below this section is the sweet log.
+
+Build switches: `DEVICE=veux shim/build.sh` (boot.img v3, `-DDEVICE_VEUX`),
+`tools/mkadt.py OUT --highmem --veux`. The kernel patches 0010/0012 on this branch
+point the early framebuffer at veux's splash (not sweet's any more).
+
+Hardware (veux live FDT, Mu-Silicium veux.dts, and the stage 1 screen):
+- GIC v3: GICD 0x0f200000, GICR 0x0f240000 (stride 0x20000). PSHOLD 0x0440b000,
+  IMEM restart_reason 0x0c12565c. UFS ufshc 0x04804000 (HCI 3.0).
+- Splash 0x85200000 size 0xc00000 (1080x2400 DSC video), in the 32MB block at
+  0x84000000 (offset 0x1200000).
+- RAM (6 GB model, live FDT): <0x80000000 0x3cc00000>, <0xc0000000 0x40000000>,
+  <0x1_00000000 0x1_00000000>. Kernel uses the upper bank (--highmem as on sweet).
+- CPUs: MPIDR 0x000-0x500 A55, 0x600/0x700 A78 (same layout as sweet).
+- Touch: Goodix GT9896 @0x5d on GENI I2C 0x04c88000; power by TLMM GPIOs
+  (avdd 51, dvdd 44), reset 21, irq 22. Not RPMh as on sweet.
+- Keys: SPMI arb core 0x01c40000, obsrvr 0x01e00000, cnfg 0x01c0a000.
+  PM6125 PON (SID 0, 0x800) power/vol-down; vol-up PMR735A GPIO1 (SID 4, 0x8800).
+- USB: USB30_PRIM 0x04e00000 (sweet values in 0072-0077 are wrong for veux).
+- ABL refuses `fastboot boot` ("unknown command"). Test images go to the
+  inactive slot: `fastboot flash boot_b IMG; fastboot set_active b; fastboot reboot`,
+  back with `fastboot set_active a`. userdata (LUN0) = 0xA84B MiB at lba 0x2DB428.
+
+Status:
+- 2026-10-28 stage 1 OK on the phone: shim draws, reads the FDT RAM map, UFS
+  TUR/READ CAPACITY/READ and GPT all succeed (read-only probe).
+- Stage 2 (next): first kernel boot. Use `sweetusb=0 sweetkeys=0 sweettouch=0
+  sweetbattery=0 sweetlog=0 cpus=1` and no `ufsrw`/`rd=`: those drivers still carry
+  sweet addresses, and sweetlog writes the end of userdata (Android data still there).
+- Stage 3: port 0060/0062 (keys, touch power) to the veux values above.
+
 ## Agent handoff / active work (2026-10-15, latest)
 
 ### >>> UPDATE 2026-10-18 (read first, then the 10-17 handoff below) <<<

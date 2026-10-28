@@ -11,13 +11,23 @@
 #include "mmu.h"
 #include "loader.h"
 #include "ufs.h"
+#include "fdt.h"
 
+#ifdef DEVICE_VEUX
+/* veux (SM6375 / holi) live FDT */
+#define IMEM_RESTART_REASON	0x0c12565cUL	/* qcom,msm-imem@c125000 restart_reason@65c */
+#define RESTART_BOOTLOADER	0x77665500U
+#define PSHOLD			0x0440b000UL
+#define GICD_BASE		0x0f200000UL
+#define GICR_BASE		0x0f240000UL
+#else
 #define IMEM_RESTART_REASON	0x146aa65cUL	/* qcom,msm-imem restart_reason@65c */
 #define RESTART_BOOTLOADER	0x77665500U
 #define PSHOLD			0x0c264000UL
 
 #define GICD_BASE		0x17a00000UL
 #define GICR_BASE		0x17a60000UL
+#endif
 #define GICR_SIZE		0x100000UL
 #define GICR_PE_SIZE		0x20000UL
 #define GICR_TYPER		0x08
@@ -382,6 +392,17 @@ void shim_main(uint64_t dtb)
 	const char *why = loader_boot(dtb);
 	con_str("LOADER", why);
 	con_skip();
+#ifdef DEVICE_VEUX
+	/* The RAM map ABL filled in; needed to place the kernel on this phone. */
+	uint64_t mem_base[8], mem_size[8];
+	int nmem = fdt_memory_reg(dtb, mem_base, mem_size, 8);
+	con_hex("MEM count", nmem);
+	for (int i = 0; i < nmem; i++) {
+		con_hex("MEM base", mem_base[i]);
+		con_hex("MEM size", mem_size[i]);
+	}
+	con_skip();
+#endif
 
 	/* No payload: probe the internal UFS while the MMU is still off. */
 	stage = "ufs";
